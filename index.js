@@ -13,6 +13,7 @@ const apiHash = env.TELEGRAM_API_HASH;
 const SESSION_FILE = "session.txt";
 const GROUP_ID = [env.TELEGRAM_GROUP_ID_MEOW, env.TELEGRAM_GROUP_ID_PFINSIDER, env.TELEGRAM_GROUP_ID_GCAT, -4771944161];
 const TARGET_USERNAME = env.TELEGRAM_TROJAN_UN;
+const [pushover_userkey, pushover_api_token] = [env.PUSHOVER_USERKEY, env.PUSHOVER_API_TOKEN];
 
 let processingMessages = {};
 
@@ -74,24 +75,28 @@ const client = new TelegramClient(session, apiId, apiHash, {
                                 if (emojiMatchCheckFailure == null && emojiMatch) {
                                     const check_buy_confirmation = await Database.insertNewTrade(contract_address, '1', amount_buy, '1', groupId.toString());
                                     if (check_buy_confirmation[0]) {
-                                        console.log(check_buy_confirmation[1]);
+                                        await pushOverNotification(pushover_userkey, pushover_api_token, `${check_buy_confirmation[1]} ~ ${groupName}`);
                                     } else {
-                                        console.error(check_buy_confirmation[1]);
+                                        await pushOverNotification(pushover_userkey, pushover_api_token, check_buy_confirmation[1]);
                                     }
                                 } else {
-                                    console.error("🔴 Buy Failed: Slippage Or Insufficient Balance for Gas Fee");
+                                    const err_msg = "🔴 Buy Failed: Slippage Or Insufficient Balance for Gas Fee";
+                                    await pushOverNotification(pushover_userkey, pushover_api_token, err_msg);
                                 }
                             } catch (err) {
-                                console.error("🔴 Buy Failed: Slippage Or Insufficient Balance for Gas Fee");
+                                const err_msg = "🔴 Buy Failed: Slippage Or Insufficient Balance for Gas Fee";
+                                await pushOverNotification(pushover_userkey, pushover_api_token, err_msg);
                             }
                             
                         } else {
-                            console.error(`🔴 Already Bought: ${contract_address}`);
+                            const err_msg = `🔴 Already Bought: ${contract_address}`;
+                            await pushOverNotification(pushover_userkey, pushover_api_token, err_msg);
                             return;
                         }
                     })();
                 } else {
-                    console.log("Balance is too low to buy");
+                    const err_msg = "Balance is too low to buy";
+                    pushOverNotification(pushover_userkey, pushover_api_token, err_msg);
                 }
 
             } finally {
@@ -160,13 +165,12 @@ async function buyExecution(contract_address, TARGET_USERNAME) {
     const msg_result = msg[0].message;
 
     let solMatch = msg_result.match(/(\d+\.\d+ SOL \(\$\d+\.\d+\))/);
-    solMatch ? solMatch[0].split(' ').slice(-1)[0].replace(/[()]/g, '') : "";
+    let amount = solMatch ? solMatch[0].split(' ').slice(-1)[0].replace(/[()]/g, '') : "";
 
     let emojiMatch = msg_result.match(/🟢/);
     let emojiMatchCheckFailure = msg_result.match(/🔴/);
-    emojiMatch ? true : false
 
-    return [solMatch, emojiMatch, emojiMatchCheckFailure];
+    return [amount, emojiMatch, emojiMatchCheckFailure];
 }
 
 
@@ -179,4 +183,23 @@ async function extractBalance(text) {
         return value;
     }
     return 0;
+}
+
+async function pushOverNotification(userKey, token, message) {
+    const data = new URLSearchParams({
+        user: userKey,
+        token: token,
+        message: message
+    });
+
+    fetch('https://api.pushover.net:443/1/messages.json', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: data
+    })
+    .then(response => response.json())
+    .then(result => console.log('Success:', result))
+    .catch(error => console.error('Error:', error));
 }
