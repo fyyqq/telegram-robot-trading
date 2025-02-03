@@ -134,14 +134,3 @@ class TelegramBot {
         return 0;
     }
 }
-
-// Konfigurasi
-const apiId = 24056374;
-const apiHash = "bf2f41a633a86d8e7519e1391abf4159";
-const SESSION_FILE = "session.txt";
-const GROUP_ID = [-1002225558516, -1002085434351];
-const TARGET_USERNAME = '@solana_trojanbot';
-
-// Inisialisasi dan jalankan bot
-const bot = new TelegramBot(apiId, apiHash, SESSION_FILE, GROUP_ID, TARGET_USERNAME);
-bot.start();
